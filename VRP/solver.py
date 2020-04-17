@@ -22,17 +22,29 @@ def cvrp_ip(C,q,K,Q,obj=True):
         objective_value: value of the minimum travel cost
         x: matrix representing number of routes that use each arc
     '''
-    # TODO: add in destination node (same distances as source & demand = 0)
+    C = np.c_[C, C[0]]
+    C = np.r_[C, [C[0]]]
+    q = np.append(q, 0)
 
     # set up the picos problem
     prob = pic.Problem()
+    x = pic.BinaryVariable("x",C.shape)
+    u = pic.RealVariable("u",C.shape[0])
+    cs = [sum(x[0,:])<=K, sum(x[:,-1])<=K, sum(x[:,-1])==sum(x[0,:]), 
+            sum(x[-1,:])==0, sum(x[:,0])==0]
 
-    # TODO: add variables, constraints, and objective function!
+    for i in range(C.shape[0]):
+        cs.extend([u[i]>=q[i], u[i]<=Q])
+        if i>=1 and i<len(q)-1:
+            cs.extend([sum(x[i,:])==1, sum(x[:,i])==1])
+        for j in range(C.shape[1]):
+            cs.append(u[i]-u[j]+Q*x[i,j]<=Q-q[j])
+    
+    prob.add_list_of_constraints(cs)
+    prob.set_objective("min",sum(x^C))
+    prob.solve(solver='cplex')
 
-    x = []
-    objective_value = 0
-
-    return objective_value, x
+    return sum(x^C), x
 
 # Local search approach (OPTIONAL)
 def local_search(C,q,K,Q):
