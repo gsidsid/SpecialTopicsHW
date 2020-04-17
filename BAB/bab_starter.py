@@ -39,10 +39,11 @@ class BBTreeNode():
         '''
         Checks if all variables (excluding the one we're maxing) are integers
         '''
+        targets = []
         for v in self.vars[:-1]:
             if v.value == None or abs(round(v.value) - float(v.value)) > 1e-4 :
-                return False
-        return True
+                targets.append(v)
+        return targets
 
     def branch_floor(self, branch_var):
         '''
@@ -79,8 +80,19 @@ class BBTreeNode():
         bestres = -1e20 # a small arbitrary initial best objective value
         bestnode_vars = root.vars # initialize bestnode_vars to the root vars
 
-        #TODO: fill this part in
+        while heap:
+            res, count, state = heappop(heap)
+            t = state.is_integral()
+            
+            if t:
+                for bound in state.branch_ceil(t[-1]), state.branch_floor(t[-1]):
+                    try:
+                        bound.prob.solve(solver='cvxopt')
+                        heappush(heap, (bound.objective, count, bound))
+                    except:
+                        pass  
 
-        
+            if bestres < state.objective:
+                bestres, bestnode_vars = state.objective, state.vars
+
         return bestres, bestnode_vars
- 
